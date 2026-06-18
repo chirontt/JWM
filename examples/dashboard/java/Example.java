@@ -44,13 +44,13 @@ public class Example implements Consumer<Event> {
 
     // Icons to cycle through with Ctrl+I. .ico/.icns are loaded as files, .png as raw image data.
     public Options icons = switch (Platform.CURRENT) {
-        case WINDOWS -> new Options("examples/dashboard/resources/windows.ico",
+        case WINDOWS -> new Options("windows.ico",
                                     "windows/icon_16x16.png",
                                     "windows/icon_24x24.png",
                                     "windows/icon_32x32.png",
                                     "windows/icon_48x48.png",
                                     "windows/icon_256x256.png");
-        case MACOS   -> new Options("examples/dashboard/resources/macos.icns");
+        case MACOS   -> new Options("macos.icns");
         case X11     -> new Options("linux/icon_24x24.png",
                                     "linux/icon_48x48.png");
     };
@@ -239,8 +239,9 @@ public class Example implements Consumer<Event> {
 
     public void applyIcon() {
         String path = icons.get();
+        var classLoader = getClass().getClassLoader();
         if (path.endsWith(".png")) {
-            try (var in = getClass().getClassLoader().getResourceAsStream(path);
+            try (var in = classLoader.getResourceAsStream(path);
                  var img = Image.makeDeferredFromEncodedBytes(in.readAllBytes());
                  var bitmap = Bitmap.makeFromImage(img); ) 
             {
@@ -250,7 +251,19 @@ public class Example implements Consumer<Event> {
                 e.printStackTrace();
             }
         } else {
-            window.setIcon(new File(path));
+            if (window instanceof WindowWin32 windowWin32) {
+                try (var in = classLoader.getResourceAsStream(path)) {
+                    windowWin32.setIcon(in.readAllBytes());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                try {
+                    window.setIcon(new File(classLoader.getResource(path).toURI()));
+                } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 

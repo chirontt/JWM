@@ -152,6 +152,29 @@ void jwm::WindowWin32::setIcon(const std::wstring& iconPath) {
     _setIconsInternal(hSmall, hBig);
 }
 
+void jwm::WindowWin32::setIcon(const unsigned char* iconData, int dataLength) {
+    int cxS = GetSystemMetrics(SM_CXSMICON), cyS = GetSystemMetrics(SM_CYSMICON);
+    int cxB = GetSystemMetrics(SM_CXICON),   cyB = GetSystemMetrics(SM_CYICON);
+    HICON hSmall = nullptr, hBig = nullptr;
+    // Get the identifier (i.e. offset) of the icon that is most appropriate
+    // for the small icon for the current video display
+    int nID = LookupIconIdFromDirectoryEx(const_cast<PBYTE>(reinterpret_cast<const BYTE*>(iconData)),
+                                          TRUE, cxS, cyS, LR_DEFAULTCOLOR);
+    if (nID > 0) {
+        hSmall = CreateIconFromResourceEx(const_cast<PBYTE>(reinterpret_cast<const BYTE*>(iconData + nID)),
+                dataLength - nID, TRUE, 0x00030000, cxS, cyS, LR_DEFAULTCOLOR | LR_SHARED);
+    }
+    // Get the identifier (i.e. offset) of the icon that is most appropriate
+    // for the big icon for the current video display
+    nID = LookupIconIdFromDirectoryEx(const_cast<PBYTE>(reinterpret_cast<const BYTE*>(iconData)),
+                                      TRUE, cxB, cyB, LR_DEFAULTCOLOR);
+    if (nID > 0) {
+        hBig = CreateIconFromResourceEx(const_cast<PBYTE>(reinterpret_cast<const BYTE*>(iconData + nID)),
+                dataLength - nID, TRUE, 0x00030000, cxB, cyB, LR_DEFAULTCOLOR | LR_SHARED);
+    }
+    _setIconsInternal(hSmall, hBig);
+}
+
 HICON jwm::WindowWin32::_createIconFromPixels(int width, int height, const unsigned char* argb) {
     // The incoming bytes are in B, G, R, A order per pixel (matching the Linux
     // setIconData layout), which is exactly a Windows 32bpp BGRA DIB, so we can
@@ -1181,6 +1204,14 @@ extern "C" JNIEXPORT void JNICALL Java_io_github_humbleui_jwm_WindowWin32__1nSet
     jsize length = env->GetStringLength(iconPath);
     instance->setIcon(std::wstring(reinterpret_cast<const wchar_t*>(iconPathStr), length));
     env->ReleaseStringChars(iconPath, iconPathStr);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_io_github_humbleui_jwm_WindowWin32__1nSetIconData
+        (JNIEnv* env, jobject obj, jbyteArray iconData, jint dataLength) {
+    jwm::WindowWin32* instance = reinterpret_cast<jwm::WindowWin32*>(jwm::classes::Native::fromJava(env, obj));
+    jbyte* bytes = env->GetByteArrayElements(iconData, nullptr);
+    instance->setIcon(reinterpret_cast<const unsigned char*>(bytes), dataLength);
+    env->ReleaseByteArrayElements(iconData, bytes, 0);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_io_github_humbleui_jwm_WindowWin32__1nSetIconPixels
