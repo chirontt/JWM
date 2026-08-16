@@ -56,7 +56,7 @@ def main():
       'examples/dashboard/resources'
     ]
   sources = build_utils.files(f'examples/{args.example}/java/**/*.java')
-  build_utils.javac(sources, f'examples/{args.example}/target/classes', classpath = classpath, release='16')
+  build_utils.javac(sources, f'examples/{args.example}/target/classes', classpath = classpath, release='22')
   
   # run
   subprocess.check_call([
